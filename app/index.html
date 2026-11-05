@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BCI Декодер — CSP+LDA</title>
+<style>
+:root{
+  --bg:#07090f; --panel:#0e131d; --panel2:#121a27; --line:#1f2a3b; --text:#e6edf7; --muted:#8a97ab;
+  --left:#60a5fa; --right:#f472b6; --neg:#22d3ee; --pos:#fb923c; --ok:#34d399; --bad:#f87171; --accent:#a78bfa;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,"Segoe UI",system-ui,sans-serif}
+body{background:radial-gradient(1200px 600px at 80% -10%,#1b1640 0%,transparent 60%),radial-gradient(900px 500px at -10% 10%,#0c2a3a 0%,transparent 55%),var(--bg);min-height:100vh}
+.wrap{max-width:1320px;margin:0 auto;padding:24px 20px 80px}
+header{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+h1{margin:0;font-size:28px;letter-spacing:-.02em}
+h1 span{background:linear-gradient(90deg,var(--neg),var(--accent),var(--pos));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);font-size:14px}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:12px;padding:8px 12px;cursor:pointer;min-width:74px;text-align:center;transition:.15s}
+.pill:hover{border-color:#334155}
+.pill.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 24px -6px var(--accent)}
+.pill b{display:block;font-size:15px}
+.pill small{color:var(--muted);font-size:12px}
+.grid{display:grid;gap:16px}
+.cards{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:16px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:16px}
+.card .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.card .v{font-size:26px;font-weight:700;letter-spacing:-.02em}
+.card .n{color:var(--muted);font-size:13px}
+section{background:linear-gradient(180deg,rgba(18,26,39,.85),rgba(14,19,29,.85));border:1px solid var(--line);border-radius:20px;padding:20px;margin-top:16px}
+section h2{margin:0 0 4px;font-size:20px;letter-spacing:-.01em}
+section h2 .num{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#1e1b4b;color:#c4b5fd;font-size:14px;margin-right:10px}
+.explain{color:var(--muted);max-width:900px;margin:0 0 14px}
+.explain b{color:var(--text)}
+canvas{display:block;width:100%}
+.two{grid-template-columns:1fr 1fr}
+.csp{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+@media (max-width:900px){.two,.csp{grid-template-columns:1fr}}
+#head3d{position:relative;height:520px;border-radius:16px;overflow:hidden;background:radial-gradient(circle at 50% 40%,#141c2e,#07090f 75%);border:1px solid var(--line)}
+#head3d canvas{position:absolute;inset:0}
+.lbl{position:absolute;font-size:11px;color:#cbd5e1;transform:translate(-50%,-160%);pointer-events:none;text-shadow:0 1px 3px #000;white-space:nowrap}
+.lbl.key{font-weight:800;color:#fff;font-size:13px}
+.hud{position:absolute;left:14px;top:12px;font-size:13px;color:var(--muted);pointer-events:none}
+.hud b{color:var(--text)}
+.legend{position:absolute;right:14px;bottom:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.bar{width:120px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--neg),#111827,var(--pos))}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--muted);padding:6px 12px;cursor:pointer;font:inherit;font-size:13px}
+.seg button.on{background:#1e293b;color:var(--text)}
+.comps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.comp{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px;cursor:pointer;transition:.15s}
+.comp:hover{border-color:#334155}
+.comp.on{border-color:var(--accent);box-shadow:0 0 22px -8px var(--accent)}
+.comp .t{display:flex;justify-content:space-between;align-items:center;gap:4px;font-size:11.5px;color:var(--muted)}
+.comp .t .tag{font-size:11px;padding:0 6px}
+.comp .t b{color:var(--text)}
+.comp canvas{height:120px}
+.tag{display:inline-block;white-space:nowrap;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.tag.left_hand{background:rgba(96,165,250,.15);color:var(--left)}
+.tag.right_hand{background:rgba(244,114,182,.15);color:var(--right)}
+.formula{font-family:ui-monospace,Consolas,monospace;font-size:13.5px;background:#0a0f18;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:10px;line-height:1.8}
+.formula .p{color:var(--pos)} .formula .m{color:var(--neg)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+.tip{position:fixed;pointer-events:none;background:#0b1220ee;border:1px solid #334155;border-radius:10px;padding:8px 10px;font-size:12.5px;display:none;z-index:9;max-width:260px}
+.bd{display:grid;grid-template-columns:72px 110px 1fr 56px;gap:6px 10px;align-items:center;font-size:13.5px}
+.bd .h{color:var(--muted);font-size:12px}
+.bd .track{position:relative;height:16px;background:#0a0f18;border-radius:6px}
+.bd .track i{position:absolute;top:2px;height:12px;border-radius:4px}
+.bd .zero{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#475569}
+.verdict{font-size:18px;margin-top:12px}
+.ok{color:var(--ok)} .bad{color:var(--bad)}
+.muted{color:var(--muted)}
+footer{color:var(--muted);font-size:12px;margin-top:24px}
+.nodata{max-width:720px;margin:60px auto;padding:24px;border:1px solid #7f1d1d;background:#1c0f14;border-radius:16px;color:#fecaca;font-size:16px;line-height:1.6}.nodata code{background:#0a0f18;padding:2px 6px;border-radius:6px;color:#e6edf7}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1><span>BCI Декодер</span> · CSP + LDA</h1>
+      <div class="sub" id="dsname">BCI Competition IV 2a · воображаемые движения</div>
+      <a href="stream.html" style="display:inline-block;margin-top:8px;padding:8px 14px;border-radius:12px;background:linear-gradient(90deg,#4f46e5,#7c3aed);color:#fff;font-weight:700;text-decoration:none">▶ Живой курсор</a>
+    </div>
+    <div class="pills" id="pills"></div>
+  </header>
+
+  <div class="grid cards" id="cards"></div>
+
+  <section>
+    <h2><span class="num">1</span>Сигнал: сырой → фильтр 8–30 Гц</h2>
+    <p class="explain">Одна проба с электрода <b>C3</b>. Сверху сырая запись: каша из всего подряд. Снизу то же самое после фильтра: остались только ритмы <b>mu</b> (8–13 Гц) и <b>beta</b> (13–30 Гц). Серая полоса — 4 секунды, когда человек представлял движение.</p>
+    <canvas id="rawc" style="height:170px"></canvas>
+    <canvas id="filtc" style="height:170px;margin-top:6px"></canvas>
+  </section>
+
+  <section>
+    <h2><span class="num">2</span>Эпоха = таблица 22 × 1001</h2>
+    <p class="explain">Вырезанные 4 секунды одной пробы. <b>Строки</b> — 22 электрода, <b>столбцы</b> — время (250 замеров в секунду). Цвет — напряжение. Такая таблица и подаётся в модель.</p>
+    <div class="row"><div class="seg" id="exSeg"></div><span class="muted" id="exInfo"></span></div>
+    <canvas id="epochc" style="height:360px"></canvas>
+  </section>
+
+  <section>
+    <h2><span class="num">3</span>ERD: где проседает ритм</h2>
+    <p class="explain">Мощность ритма, усреднённая по всем пробам первого дня, в % от фона до стрелки. Представил <b>правую</b> руку — проседает <b>C3</b> (левая кора). <b>Левую</b> — проседает <b>C4</b>. Это физиология, которую модель и ловит.</p>
+    <div class="grid two"><canvas id="erdC3" style="height:240px"></canvas><canvas id="erdC4" style="height:240px"></canvas></div>
+  </section>
+
+  <section>
+    <h2><span class="num">4</span>CSP: 6 смесей электродов</h2>
+    <p class="explain">CSP складывает 22 электрода с весами в один «виртуальный электрод». Таких смесей 6. <b>Рецепт</b> (фильтр) — сколько брать от каждого электрода: оранжевые с плюсом, бирюзовые с минусом, толщина луча = вес. <b>Паттерн</b> — откуда на голове идёт сигнал, который ловит смесь. Знак (цвет) произвольный, смысл несёт сила.</p>
+    <div class="grid csp">
+      <div>
+        <div class="row">
+          <div class="seg" id="modeSeg"><button data-m="filter" class="on">Рецепт смеси</button><button data-m="pattern">Паттерн</button></div>
+          <span class="muted">крути мышкой · колесо — зум</span>
+        </div>
+        <div id="head3d"><div class="hud" id="hud"></div><div class="hud" style="top:auto;bottom:12px">C3 — левое полушарие · C4 — правое · конус — нос</div><div class="legend"><span>−</span><div class="bar"></div><span>+</span></div></div>
+        <div class="formula" id="formula"></div>
+      </div>
+      <div>
+        <div class="comps" id="comps"></div>
+        <div class="grid two" style="margin-top:12px">
+          <div><div class="muted" style="font-size:13px">Рецепт на карте</div><canvas id="bigFilter" style="height:230px"></canvas></div>
+          <div><div class="muted" style="font-size:13px">Паттерн на карте</div><canvas id="bigPattern" style="height:230px"></canvas></div>
+        </div>
+        <canvas id="weightsBar" style="height:150px;margin-top:8px"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">5</span>Каждая эпоха → точка. LDA → линия</h2>
+    <p class="explain">У каждой эпохи считаем мощность всех 6 смесей — получаем 6 чисел. Здесь нарисованы 2 самые полезные из 6 (6D на экран не влезает). <b>Линия LDA</b> выучена на дне 1. Точки дня 2 модель не видела: по какую сторону легла — такой и ответ. Крестик — ошибка. Нажми на точку, чтобы разобрать пробу.</p>
+    <div class="row"><div class="seg" id="daySeg"><button data-d="1">День 1 (учёба)</button><button data-d="2" class="on">День 2 (экзамен)</button><button data-d="all">Оба</button></div><span class="muted" id="scatInfo"></span></div>
+    <canvas id="scatter" style="height:440px"></canvas>
+  </section>
+
+  <section>
+    <h2><span class="num">6</span>Решение по всем 6 числам</h2>
+    <p class="explain">Настоящая модель смотрит на все 6 чисел: умножает каждое на свой вес, складывает и прибавляет сдвиг. <b>Меньше 0 — левая, больше 0 — правая.</b> Слева все пробы дня 2 по этой сумме, справа разбор одной пробы.</p>
+    <div class="grid two">
+      <canvas id="hist" style="height:300px"></canvas>
+      <div id="breakdown"></div>
+    </div>
+  </section>
+
+  <footer>Данные: BCI Competition IV 2a (BNCI2014_001, TU Graz). Модель: CSP (6 компонент) + LDA, учёба на дне 1, проверка на дне 2. Сгенерировано скриптом <code>app_export.py</code>.</footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const COL = {left_hand:'#60a5fa', right_hand:'#f472b6'};
+const RU = {left_hand:'левая рука', right_hand:'правая рука'};
+const KEY = ['C3','Cz','C4'];
+const S = {d:null, comp:2, mode:'filter', day:'2', trial:null, ex:'left_hand'};
+const $ = id => document.getElementById(id);
+const pct = v => (v*100).toFixed(1).replace('.0','') + '%';
+
+// бирюзовый (−) → тёмный (0) → оранжевый (+)
+function cmap(v){
+  const t = Math.max(-1, Math.min(1, v)), a = Math.pow(Math.abs(t), .75);
+  const mid=[17,24,39], c = t<0 ? [34,211,238] : [251,146,60];
+  return mid.map((m,i)=>Math.round(m+(c[i]-m)*a));
+}
+const rgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+
+function setup(cv){
+  const dpr = devicePixelRatio||1, w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w*dpr; cv.height = h*dpr;
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.font = '12px Inter,Segoe UI,sans-serif';
+  return {ctx,w,h};
+}
+
+// ---------- линейный график ----------
+function lineChart(cv, series, o){
+  const {ctx,w,h} = setup(cv);
+  const m = {l:52,r:14,t:22,b:28}, W=w-m.l-m.r, H=h-m.t-m.b;
+  const X = x => m.l + (x-o.xmin)/(o.xmax-o.xmin)*W;
+  const Y = y => m.t + (1-(y-o.ymin)/(o.ymax-o.ymin))*H;
+  (o.shade||[]).forEach(([a,b,c])=>{ctx.fillStyle=c; ctx.fillRect(X(a),m.t,X(b)-X(a),H);});
+  ctx.strokeStyle='#1f2a3b'; ctx.lineWidth=1; ctx.fillStyle='#8a97ab';
+  for(const yv of o.yticks||[]){ctx.beginPath();ctx.moveTo(m.l,Y(yv));ctx.lineTo(m.l+W,Y(yv));ctx.stroke();ctx.textAlign='right';ctx.fillText(yv+(o.yunit||''),m.l-6,Y(yv)+4);}
+  for(const xv of o.xticks||[]){ctx.textAlign='center';ctx.fillText(xv,X(xv),h-8);}
+  (o.vlines||[]).forEach(v=>{ctx.strokeStyle='#64748b';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(X(v.x),m.t);ctx.lineTo(X(v.x),m.t+H);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#cbd5e1';ctx.textAlign='left';ctx.fillText(v.label,X(v.x)+5,m.t+12);});
+  ctx.save(); ctx.beginPath(); ctx.rect(m.l,m.t,W,H); ctx.clip();
+  for(const s of series){
+    ctx.strokeStyle=s.color; ctx.lineWidth=s.width||1.5; ctx.beginPath();
+    s.y.forEach((yv,i)=>{const px=X(s.x[i]),py=Y(yv); i?ctx.lineTo(px,py):ctx.moveTo(px,py);}); ctx.stroke();
+  }
+  ctx.restore();
+  ctx.fillStyle='#e6edf7'; ctx.textAlign='left'; ctx.font='600 13px Inter,Segoe UI,sans-serif'; ctx.fillText(o.title||'',m.l,14);
+  if(o.legend){let lx=m.l+W; ctx.textAlign='right'; ctx.font='12px Inter,Segoe UI,sans-serif';
+    [...o.legend].reverse().forEach(([t,c])=>{const tw=ctx.measureText(t).width; ctx.fillStyle=c; ctx.fillText(t,lx,14); lx-=tw+10; ctx.fillRect(lx,8,8,3); lx-=14;});}
+}
+
+// ---------- карта головы ----------
+function drawTopo(cv, grid, R, pos, names, opt={}){
+  const {ctx,w,h} = setup(cv);
+  const rad = Math.min(w,h)*0.38, cx=w/2, cy=h/2+rad*0.06, n=grid.length;
+  let mx=1e-9; grid.forEach(r=>r.forEach(v=>{if(v!=null) mx=Math.max(mx,Math.abs(v));}));
+  const off=document.createElement('canvas'); off.width=n; off.height=n;
+  const octx=off.getContext('2d'), img=octx.createImageData(n,n);
+  for(let iy=0;iy<n;iy++) for(let ix=0;ix<n;ix++){
+    const v=grid[iy][ix], k=((n-1-iy)*n+ix)*4;
+    if(v==null){img.data[k+3]=0;continue;}
+    const c=cmap(v/mx); img.data[k]=c[0];img.data[k+1]=c[1];img.data[k+2]=c[2];img.data[k+3]=255;
+  }
+  octx.putImageData(img,0,0);
+  ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.clip();
+  ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
+  ctx.drawImage(off,cx-rad,cy-rad,2*rad,2*rad); ctx.restore();
+  ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx-rad*.12,cy-rad*.99); ctx.lineTo(cx,cy-rad*1.15); ctx.lineTo(cx+rad*.12,cy-rad*.99); ctx.stroke();
+  for(const sgn of [-1,1]){ctx.beginPath(); ctx.ellipse(cx+sgn*rad*1.04,cy,rad*.06,rad*.18,0,0,Math.PI*2); ctx.stroke();}
+  pos.forEach(([x,y],i)=>{
+    const px=cx+x/R*rad, py=cy-y/R*rad, key=KEY.includes(names[i]);
+    ctx.fillStyle=key?'#fff':'rgba(255,255,255,.55)';
+    ctx.beginPath(); ctx.arc(px,py,key?2.6:1.6,0,Math.PI*2); ctx.fill();
+    if(key && opt.names!==false){ctx.font='700 10px Inter,Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.fillText(names[i],px,py-5);}
+  });
+}
+
+// ---------- 3D голова ----------
+class Head3D{
+  constructor(el){
+    this.el=el;
+    this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+    this.renderer.setPixelRatio(devicePixelRatio);
+    el.appendChild(this.renderer.domElement);
+    this.scene=new THREE.Scene();
+    this.camera=new THREE.PerspectiveCamera(38,1,.1,50);
+    this.camera.position.set(-2.5,2.3,4.3);
+    this.controls=new OrbitControls(this.camera,this.renderer.domElement);
+    this.controls.target.set(0,.62,0); this.controls.enableDamping=true;
+    this.controls.autoRotate=true; this.controls.autoRotateSpeed=.6;
+    this.controls.minDistance=2.2; this.controls.maxDistance=9;
+    this.renderer.domElement.addEventListener('pointerdown',()=>this.controls.autoRotate=false);
+    const s=this.scene;
+    s.add(new THREE.HemisphereLight(0xbcd4ff,0x1a1020,1.1));
+    const d1=new THREE.DirectionalLight(0xffffff,1.6); d1.position.set(3,5,4); s.add(d1);
+    const d2=new THREE.DirectionalLight(0x8b5cf6,.8); d2.position.set(-4,1,-3); s.add(d2);
+    this.buildHead(); this.buildBrain();
+    this.node=new THREE.Mesh(new THREE.SphereGeometry(.09,32,24),new THREE.MeshStandardMaterial({color:0xa78bfa,emissive:0x7c3aed,emissiveIntensity:1.4}));
+    this.node.position.set(0,1.85,0); s.add(this.node);
+    this.nodeLbl=this.label('Σ смесь', true);
+    this.group=new THREE.Group(); s.add(this.group);
+    this.labels=[]; this.elec=[]; this.lines=[];
+    new ResizeObserver(()=>this.resize()).observe(el); this.resize();
+    const loop=()=>{requestAnimationFrame(loop); this.controls.update(); this.renderer.render(this.scene,this.camera); this.updateLabels();};
+    loop();
+  }
+  label(text,key){const d=document.createElement('div'); d.className='lbl'+(key?' key':''); d.textContent=text; this.el.appendChild(d); return d;}
+  resize(){const w=this.el.clientWidth,h=this.el.clientHeight; this.renderer.setSize(w,h); this.camera.aspect=w/h; this.camera.updateProjectionMatrix();}
+  buildHead(){
+    const scalp=new THREE.Mesh(new THREE.SphereGeometry(1,96,64),new THREE.MeshPhysicalMaterial({color:0x334155,transparent:true,opacity:.16,roughness:.3,depthWrite:false,side:THREE.DoubleSide}));
+    this.scene.add(scalp);
+    const wire=new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.SphereGeometry(1.001,36,18)),new THREE.LineBasicMaterial({color:0x475569,transparent:true,opacity:.12}));
+    this.scene.add(wire);
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(.12,.28,24),new THREE.MeshStandardMaterial({color:0x64748b,transparent:true,opacity:.5}));
+    nose.rotation.x=-Math.PI/2; nose.position.set(0,.05,-1.08); this.scene.add(nose);
+    for(const sgn of [-1,1]){const ear=new THREE.Mesh(new THREE.SphereGeometry(.13,24,16),new THREE.MeshStandardMaterial({color:0x64748b,transparent:true,opacity:.45}));
+      ear.scale.set(.45,1,.7); ear.position.set(sgn*1.02,0,.02); this.scene.add(ear);}
+  }
+  buildBrain(){
+    for(const side of [-1,1]){
+      const g=new THREE.SphereGeometry(1,180,130), p=g.attributes.position, v=new THREE.Vector3();
+      for(let i=0;i<p.count;i++){
+        v.fromBufferAttribute(p,i);
+        const f=Math.sin(11*v.x+3*Math.sin(7*v.z))*Math.sin(9*v.z+2.5*Math.sin(8*v.y))+.6*Math.sin(15*v.y+4*v.z);
+        let k=1+.045*f;
+        if(v.x*side<-.55) k*=1-(-.55-v.x*side)*.5;   // приплюснутая внутренняя сторона
+        v.multiplyScalar(k); p.setXYZ(i,v.x,v.y,v.z);
+      }
+      g.computeVertexNormals();
+      const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0xd4a5ae,roughness:.62,metalness:.04,emissive:0x2a0f18,emissiveIntensity:.35}));
+      m.scale.set(.33,.5,.76); m.position.set(side*.345,.36,0.02); this.scene.add(m);
+    }
+  }
+  setSubject(geo,names){
+    this.group.clear(); this.labels.forEach(l=>l.remove()); this.labels=[]; this.elec=[]; this.lines=[];
+    const c=geo.center, R=geo.radius;
+    const toV=p=>new THREE.Vector3((p[0]-c[0])/R,(p[2]-c[2])/R,-(p[1]-c[1])/R);
+    const mg=new THREE.BufferGeometry().setFromPoints(geo.montage_xyz.map(p=>toV(p).normalize().multiplyScalar(1.005)));
+    this.group.add(new THREE.Points(mg,new THREE.PointsMaterial({color:0x64748b,size:.018,transparent:true,opacity:.7})));
+    geo.ch_xyz.forEach((p,i)=>{
+      const pos=toV(p).normalize().multiplyScalar(1.03);
+      const mesh=new THREE.Mesh(new THREE.SphereGeometry(.05,24,16),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0x000000,roughness:.35}));
+      mesh.position.copy(pos); this.group.add(mesh); this.elec.push(mesh);
+      const lg=new THREE.BufferGeometry().setFromPoints([pos,this.node.position]);
+      const line=new THREE.Line(lg,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.3}));
+      this.group.add(line); this.lines.push(line);
+      this.labels.push(this.label(names[i],KEY.includes(names[i])));
+    });
+  }
+  setWeights(w,showLines){
+    const mx=Math.max(...w.map(Math.abs));
+    w.forEach((x,i)=>{
+      const t=x/mx, c=cmap(t), col=new THREE.Color(c[0]/255,c[1]/255,c[2]/255), a=Math.abs(t);
+      const m=this.elec[i]; m.material.color.copy(col); m.material.emissive.copy(col); m.material.emissiveIntensity=.25+1.1*a;
+      m.scale.setScalar(.65+1.3*a);
+      const l=this.lines[i]; l.visible=showLines && a>.08; l.material.color.copy(col); l.material.opacity=Math.pow(a,1.3)*.95;
+    });
+    this.node.visible=showLines; this.nodeLbl.style.display=showLines?'':'none';
+  }
+  updateLabels(){
+    const w=this.el.clientWidth,h=this.el.clientHeight, camDir=new THREE.Vector3();
+    const place=(div,p3,normal)=>{
+      const v=p3.clone().project(this.camera);
+      div.style.left=((v.x+1)/2*w)+'px'; div.style.top=((1-v.y)/2*h)+'px';
+      if(normal){camDir.copy(this.camera.position).sub(p3).normalize(); div.style.opacity=normal.dot(camDir)>-.1?1:.18;}
+    };
+    this.elec.forEach((m,i)=>place(this.labels[i],m.position,m.position.clone().normalize()));
+    if(this.node.visible) place(this.nodeLbl,this.node.position,null);
+  }
+}
+
+// ---------- секции ----------
+function renderCards(d, idx){
+  const a=d.acc, pc=d.per_class_per_day;
+  const card=(k,v,n)=>`<div class="card"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`;
+  $('cards').innerHTML=[
+    card('Данных у человека', `${idx.runs_per_day*idx.trials_per_run*2} проб`, `2 дня × ${idx.runs_per_day} прогонов × ${idx.trials_per_run} проб · ~${idx.session_minutes} мин записи в день`),
+    card('Одна проба', '~8 с', `крестик 0–2 с · стрелка на 2-й · представляет 2–6 с · отдых`),
+    card('Левая / правая', `${d.n_trials} эпох`, `по ${pc.left_hand} + ${pc.right_hand} в день · ${d.channels.length} электрода · ${d.sfreq} Гц`),
+    card('2 класса · экзамен', pct(a.lr.train_to_eval), `учил на дне 1, проверял на дне 2 · наугад 50%`),
+    card('2 класса · CV', pct(a.lr.cv5_mean), `5-кратная кросс-валидация ± ${pct(a.lr.cv5_std)}`),
+    card('4 класса · экзамен', pct(a.four.train_to_eval), `+ ноги и язык · CV ${pct(a.four.cv5_mean)} · наугад 25%`),
+  ].join('');
+}
+
+function renderRaw(d){
+  const r=d.raw_example, t=r.raw.map((_,i)=>r.t0+i*r.dt);
+  const lim=a=>{const s=[...a].map(Math.abs).sort((x,y)=>x-y); return Math.ceil(s[Math.floor(s.length*.995)]/5)*5;};
+  const common={xmin:-.5,xmax:8,xticks:[0,1,2,3,4,5,6,7,8],shade:[[2,6,'rgba(148,163,184,.08)']],vlines:[{x:0,label:'начало пробы'},{x:2,label:`стрелка: ${RU[r.label]}`}],yunit:' мкВ'};
+  const l1=lim(r.raw), l2=lim(r.filt);
+  lineChart($('rawc'),[{x:t,y:r.raw,color:'#94a3b8',width:1}],{...common,ymin:-l1,ymax:l1,yticks:[-l1,0,l1],title:'Сырой сигнал C3 (1–40 Гц)'});
+  lineChart($('filtc'),[{x:t,y:r.filt,color:'#a78bfa',width:1.3}],{...common,ymin:-l2,ymax:l2,yticks:[-l2,0,l2],vlines:[],title:'После фильтра 8–30 Гц — mu + beta · время, с'});
+}
+
+function renderEpoch(d){
+  $('exSeg').innerHTML=d.classes.map(c=>`<button data-c="${c}" class="${c===S.ex?'on':''}">${RU[c]}</button>`).join('');
+  $('exSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.ex=b.dataset.c; renderEpoch(d);});
+  const ex=d.examples[S.ex], data=ex.data, nC=data.length, nT=data[0].length;
+  $('exInfo').textContent=`эпоха №${ex.index} · день 2 · ${nC} × ${Math.round((nT-1)*2+1)} чисел`;
+  const {ctx,w,h}=setup($('epochc')); const m={l:46,r:10,t:8,b:26}, W=w-m.l-m.r, H=h-m.t-m.b;
+  const all=data.flat().map(Math.abs).sort((a,b)=>a-b), mx=all[Math.floor(all.length*.98)];
+  const off=document.createElement('canvas'); off.width=nT; off.height=nC; const oc=off.getContext('2d'), img=oc.createImageData(nT,nC);
+  data.forEach((row,ci)=>row.forEach((v,ti)=>{const c=cmap(v/mx), k=(ci*nT+ti)*4; img.data[k]=c[0];img.data[k+1]=c[1];img.data[k+2]=c[2];img.data[k+3]=255;}));
+  oc.putImageData(img,0,0); ctx.imageSmoothingEnabled=false; ctx.drawImage(off,m.l,m.t,W,H);
+  const rowH=H/nC;
+  d.channels.forEach((ch,i)=>{const key=KEY.includes(ch); ctx.fillStyle=key?'#fff':'#8a97ab'; ctx.font=(key?'700 ':'')+'11px Inter,Segoe UI,sans-serif'; ctx.textAlign='right'; ctx.fillText(ch,m.l-6,m.t+rowH*(i+.5)+4);
+    if(key){ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.strokeRect(m.l+.5,m.t+rowH*i+.5,W-1,rowH-1);}});
+  ctx.fillStyle='#8a97ab'; ctx.textAlign='center'; ctx.font='12px Inter,Segoe UI,sans-serif';
+  for(let s=0;s<=4;s++) ctx.fillText(s+' с', m.l+W*s/4, h-8);
+}
+
+function renderERD(d){
+  const t=d.erd.t, cur=d.erd.curves;
+  for(const ch of ['C3','C4']){
+    const ys=d.classes.flatMap(c=>cur[`${ch}|${c}`]);
+    const lo=Math.floor(Math.min(...ys,-30)/10)*10, hi=Math.ceil(Math.max(...ys,30)/10)*10;
+    const ticks=[]; for(let v=lo;v<=hi;v+=hi-lo>80?20:10) ticks.push(v);
+    lineChart($('erd'+ch), d.classes.map(c=>({x:t,y:cur[`${ch}|${c}`],color:COL[c],width:2.2})),
+      {xmin:0,xmax:7,ymin:lo,ymax:hi,yticks:ticks,yunit:'%',xticks:[0,1,2,3,4,5,6,7],shade:[[2,6,'rgba(148,163,184,.08)']],
+       vlines:[{x:2,label:'стрелка'}],title:`${ch} — ${ch==='C3'?'левая':'правая'} моторная кора`,
+       legend:d.classes.map(c=>[RU[c],COL[c]])});
+  }
+}
+
+let head;
+function renderCSP(d){
+  const comp=d.components[S.comp];
+  $('comps').innerHTML=d.components.map((c,k)=>`<div class="comp ${k===S.comp?'on':''}" data-k="${k}">
+     <div class="t"><b>Смесь ${k+1}</b><span>LDA ${c.lda_w>0?'+':''}${c.lda_w.toFixed(1)}</span></div>
+     <canvas></canvas><div class="t"><span>↓ при</span><span class="tag ${c.low_for}">${RU[c.low_for]}</span></div></div>`).join('');
+  $('comps').querySelectorAll('.comp').forEach(el=>{
+    const k=+el.dataset.k; drawTopo(el.querySelector('canvas'), d.components[k].pattern_grid, d.geo.grid_radius, d.geo.ch_2d, d.channels, {names:false});
+    el.onclick=()=>{S.comp=k; renderCSP(d);};
+  });
+  drawTopo($('bigFilter'), comp.filter_grid, d.geo.grid_radius, d.geo.ch_2d, d.channels);
+  drawTopo($('bigPattern'), comp.pattern_grid, d.geo.grid_radius, d.geo.ch_2d, d.channels);
+  const vals = S.mode==='filter' ? comp.filter : comp.pattern;
+  head.setWeights(vals, S.mode==='filter');
+  $('hud').innerHTML=`<b>Смесь ${S.comp+1}</b> · ${S.mode==='filter'?'рецепт: сколько брать от каждого электрода':'паттерн: откуда идёт сигнал'}<br>мощность проседает при: <span class="tag ${comp.low_for}">${RU[comp.low_for]}</span>`;
+  const terms=comp.mix.map((t,i)=>{const s=t.w<0?'−':(i?'+':''); return `<span class="${t.w<0?'m':'p'}">${s} ${Math.abs(t.w).toFixed(2)}·${t.ch}</span>`;}).join(' ');
+  $('formula').innerHTML=`смесь ${S.comp+1} = ${terms} <span class="muted">+ ещё ${d.channels.length-comp.mix.length} электродов с малыми весами</span>`;
+  // все 22 веса столбиками
+  const {ctx,w,h}=setup($('weightsBar')); const m={l:8,r:8,t:18,b:30}, W=w-m.l-m.r, H=h-m.t-m.b, n=vals.length, bw=W/n, mid=m.t+H/2;
+  ctx.fillStyle='#e6edf7'; ctx.font='600 12px Inter,Segoe UI,sans-serif'; ctx.textAlign='left'; ctx.fillText(S.mode==='filter'?'Все 22 веса рецепта':'Паттерн по 22 электродам',m.l,12);
+  ctx.strokeStyle='#334155'; ctx.beginPath(); ctx.moveTo(m.l,mid); ctx.lineTo(m.l+W,mid); ctx.stroke();
+  const mx=Math.max(...vals.map(Math.abs));
+  vals.forEach((v,i)=>{const hh=v/mx*H/2; ctx.fillStyle=rgb(cmap(v/mx)); ctx.fillRect(m.l+i*bw+bw*.15,hh>0?mid-hh:mid,bw*.7,Math.abs(hh)||1);
+    const key=KEY.includes(d.channels[i]); ctx.save(); ctx.translate(m.l+i*bw+bw/2,h-4); ctx.rotate(-Math.PI/2.6); ctx.fillStyle=key?'#fff':'#8a97ab'; ctx.font=(key?'700 ':'')+'10px Inter,Segoe UI,sans-serif'; ctx.textAlign='left'; ctx.fillText(d.channels[i],0,0); ctx.restore();});
+}
+
+// ---------- точки + линия ----------
+let scatPts=[];
+function renderScatter(d){
+  const [a,b]=d.best2, cv=$('scatter'), {ctx,w,h}=setup(cv);
+  const m={l:56,r:16,t:16,b:40}, W=w-m.l-m.r, H=h-m.t-m.b;
+  const xs=d.trials.map(t=>t.f[a]), ys=d.trials.map(t=>t.f[b]);
+  const pad=(lo,hi)=>[lo-(hi-lo)*.06,hi+(hi-lo)*.06];
+  const [x0,x1]=pad(Math.min(...xs),Math.max(...xs)), [y0,y1]=pad(Math.min(...ys),Math.max(...ys));
+  const X=x=>m.l+(x-x0)/(x1-x0)*W, Y=y=>m.t+(1-(y-y0)/(y1-y0))*H;
+  const L=d.lda2, side=(x,y)=>L.w[0]*x+L.w[1]*y+L.b;
+  const step=8; for(let px=0;px<W;px+=step) for(let py=0;py<H;py+=step){
+    const x=x0+(px+step/2)/W*(x1-x0), y=y1-(py+step/2)/H*(y1-y0);
+    ctx.fillStyle=side(x,y)>0?'rgba(244,114,182,.06)':'rgba(96,165,250,.06)'; ctx.fillRect(m.l+px,m.t+py,step,step);}
+  ctx.save(); ctx.beginPath(); ctx.rect(m.l,m.t,W,H); ctx.clip();
+  ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=2.5; ctx.shadowColor='#a78bfa'; ctx.shadowBlur=14; ctx.beginPath();
+  const yAt=x=>-(L.w[0]*x+L.b)/L.w[1]; ctx.moveTo(X(x0),Y(yAt(x0))); ctx.lineTo(X(x1),Y(yAt(x1))); ctx.stroke(); ctx.shadowBlur=0;
+  scatPts=[]; let shown=0, wrong=0;
+  d.trials.forEach((t,i)=>{
+    if(S.day!=='all' && String(t.day)!==S.day) return;
+    const px=X(t.f[a]), py=Y(t.f[b]), bad=side(t.f[a],t.f[b])>0 !== (t.y===d.lda.positive); shown++; if(bad) wrong++;
+    scatPts.push({i,px,py});
+    ctx.globalAlpha=i===S.trial?1:.85; ctx.strokeStyle=COL[t.y]; ctx.fillStyle=COL[t.y]; ctx.lineWidth=2;
+    if(bad){ctx.beginPath(); ctx.moveTo(px-5,py-5); ctx.lineTo(px+5,py+5); ctx.moveTo(px+5,py-5); ctx.lineTo(px-5,py+5); ctx.stroke();}
+    else{ctx.beginPath(); ctx.arc(px,py,4.2,0,Math.PI*2); t.day===1?ctx.fill():ctx.stroke();}
+    if(i===S.trial){ctx.globalAlpha=1; ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(px,py,10,0,Math.PI*2); ctx.stroke();}
+  });
+  ctx.globalAlpha=1; ctx.restore();
+  ctx.fillStyle='#8a97ab'; ctx.textAlign='center'; ctx.fillText(`мощность смеси ${a+1} (log) →`, m.l+W/2, h-10);
+  ctx.save(); ctx.translate(16,m.t+H/2); ctx.rotate(-Math.PI/2); ctx.fillText(`мощность смеси ${b+1} (log) →`,0,0); ctx.restore();
+  ctx.textAlign='left'; ctx.font='600 13px Inter,Segoe UI,sans-serif';
+  ctx.fillStyle=COL.left_hand; ctx.fillText('● левая рука', m.l+10, m.t+18); ctx.fillStyle=COL.right_hand; ctx.fillText('● правая рука', m.l+120, m.t+18);
+  ctx.fillStyle='#8a97ab'; ctx.font='12px Inter,Segoe UI,sans-serif'; ctx.fillText('залитые — день 1 · пустые — день 2 · × — ошибка', m.l+240, m.t+18);
+  $('scatInfo').textContent=`по этим 2 смесям: ${shown-wrong} из ${shown} верно (${pct((shown-wrong)/shown)}) · по всем 6 — см. ниже`;
+}
+function hookScatter(){
+  const cv=$('scatter'), tip=$('tip');
+  const near=e=>{const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top; let best=null,bd=144;
+    scatPts.forEach(p=>{const dd=(p.px-x)**2+(p.py-y)**2; if(dd<bd){bd=dd;best=p;}}); return best;};
+  cv.onmousemove=e=>{const p=near(e); if(!p){tip.style.display='none'; cv.style.cursor='default'; return;}
+    const t=S.d.trials[p.i]; cv.style.cursor='pointer'; tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px';
+    tip.innerHTML=`Эпоха №${p.i} · день ${t.day}<br>было: <span class="tag ${t.y}">${RU[t.y]}</span><br>модель: <span class="tag ${t.pred}">${RU[t.pred]}</span> (сумма ${t.score>0?'+':''}${t.score})`;};
+  cv.onmouseleave=()=>tip.style.display='none';
+  cv.onclick=e=>{const p=near(e); if(p){S.trial=p.i; renderScatter(S.d); renderHist(S.d); renderBreakdown(S.d);}};
+}
+
+// ---------- гистограмма и разбор ----------
+function renderHist(d){
+  const {ctx,w,h}=setup($('hist')); const m={l:40,r:12,t:30,b:34}, W=w-m.l-m.r, H=h-m.t-m.b;
+  const T=d.trials.filter(t=>t.day===2), sc=T.map(t=>t.score), lo=Math.floor(Math.min(...sc)), hi=Math.ceil(Math.max(...sc));
+  const nb=28, bw=(hi-lo)/nb, X=x=>m.l+(x-lo)/(hi-lo)*W;
+  const counts={}; d.classes.forEach(c=>counts[c]=new Array(nb).fill(0));
+  T.forEach(t=>counts[t.y][Math.min(nb-1,Math.floor((t.score-lo)/bw))]++);
+  const mx=Math.max(...d.classes.flatMap(c=>counts[c]));
+  ctx.fillStyle='rgba(96,165,250,.05)'; ctx.fillRect(m.l,m.t,X(0)-m.l,H); ctx.fillStyle='rgba(244,114,182,.05)'; ctx.fillRect(X(0),m.t,m.l+W-X(0),H);
+  d.classes.forEach(c=>counts[c].forEach((n,i)=>{if(!n)return; const hh=n/mx*H; ctx.fillStyle=COL[c]+'aa'; ctx.fillRect(X(lo+i*bw)+1,m.t+H-hh,W/nb-2,hh);}));
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.moveTo(X(0),m.t-6); ctx.lineTo(X(0),m.t+H); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#e6edf7'; ctx.font='600 13px Inter,Segoe UI,sans-serif'; ctx.textAlign='right'; ctx.fillText('← левая', X(0)-8, m.t+6); ctx.textAlign='left'; ctx.fillText('правая →', X(0)+8, m.t+6);
+  const ok=T.filter(t=>t.pred===t.y).length; ctx.textAlign='left'; ctx.fillStyle='#8a97ab'; ctx.font='12px Inter,Segoe UI,sans-serif';
+  ctx.fillText(`день 2: ${ok} из ${T.length} верно = ${pct(ok/T.length)}`, m.l, 14);
+  const st=Math.max(1,Math.round((hi-lo)/8)); for(let v=Math.ceil(lo/st)*st; v<=hi; v+=st){ctx.textAlign='center'; ctx.fillText(v,X(v),h-14);}
+  ctx.fillText('сумма LDA', m.l+W/2, h-1);
+  if(S.trial!=null){const t=d.trials[S.trial]; ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(X(t.score),m.t+H+2); ctx.lineTo(X(t.score)-6,m.t+H+12); ctx.lineTo(X(t.score)+6,m.t+H+12); ctx.fill();}
+}
+
+function renderBreakdown(d){
+  if(S.trial==null){const i=d.trials.findIndex(t=>t.day===2); S.trial=i;}
+  const t=d.trials[S.trial], w=d.lda.w, contr=t.f.map((f,k)=>f*w[k]), mx=Math.max(...contr.map(Math.abs),Math.abs(d.lda.b),Math.abs(t.score));
+  const bar=v=>{const p=Math.abs(v)/mx*50; return `<div class="track"><span class="zero"></span><i style="left:${v<0?50-p:50}%;width:${p}%;background:${v<0?COL.left_hand:COL.right_hand}"></i></div>`;};
+  const rows=t.f.map((f,k)=>`<span>смесь ${k+1}</span><span>${f.toFixed(2)} × ${w[k]>0?'+':''}${w[k].toFixed(2)}</span>${bar(contr[k])}<span>${contr[k]>0?'+':''}${contr[k].toFixed(2)}</span>`).join('');
+  const ok=t.pred===t.y;
+  $('breakdown').innerHTML=`<div class="muted" style="margin-bottom:8px">Эпоха №${S.trial} · день ${t.day} · было: <span class="tag ${t.y}">${RU[t.y]}</span></div>
+    <div class="bd"><span class="h">признак</span><span class="h">число × вес</span><span class="h">← левая · правая →</span><span class="h">вклад</span>
+    ${rows}<span>сдвиг</span><span></span>${bar(d.lda.b)}<span>${d.lda.b>0?'+':''}${d.lda.b.toFixed(2)}</span>
+    <b>сумма</b><span></span>${bar(t.score)}<b>${t.score>0?'+':''}${t.score.toFixed(2)}</b></div>
+    <div class="verdict">${t.score<0?'< 0':'> 0'} → модель: <span class="tag ${t.pred}">${RU[t.pred]}</span> <span class="${ok?'ok':'bad'}">${ok?'✓ угадала':'✗ ошиблась'}</span></div>
+    <div class="muted" style="font-size:13px;margin-top:6px">Нажми на любую точку в разделе 5, чтобы разобрать другую пробу.</div>`;
+}
+
+// ---------- загрузка ----------
+async function loadSubject(s){
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',+p.dataset.s===s));
+  const d=await (await fetch(`data/s${String(s).padStart(2,'0')}.json`)).json();
+  S.d=d; S.trial=null;
+  const idx=window.__idx;
+  renderCards(d,idx); renderRaw(d); renderEpoch(d); renderERD(d);
+  head.setSubject(d.geo,d.channels); renderCSP(d);
+  renderScatter(d); renderBreakdown(d); renderHist(d);
+}
+
+function noData(){document.querySelector('.wrap').innerHTML=`<div class="nodata"><b>Данные не загрузились.</b><br>Страницу открыли как файл — так браузер не даёт ей читать данные.<br><br>Запусти <code>projects/bci/app/run.cmd</code> двойным кликом — откроется сам.<br>Или вручную из папки <code>projects/bci</code>: <code>python -m http.server 8765 --bind 127.0.0.1 --directory app</code> и открой <code>http://localhost:8765</code>.</div>`;}
+async function init(){
+  let idx;try{if(location.protocol==='file:')throw 0;idx=await (await fetch('data/index.json')).json();}catch(e){noData();return;}
+  window.__idx=idx; head=new Head3D($('head3d'));
+  $('dsname').textContent=`${idx.dataset} · воображаемые движения · 9 человек`;
+  $('pills').innerHTML=idx.subjects.map(e=>`<button class="pill" data-s="${e.subject}"><b>S${e.subject}</b><small>${pct(e.lr.train_to_eval)}</small></button>`).join('');
+  document.querySelectorAll('.pill').forEach(p=>p.onclick=()=>loadSubject(+p.dataset.s));
+  $('modeSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.mode=b.dataset.m; $('modeSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); renderCSP(S.d);});
+  $('daySeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.day=b.dataset.d; $('daySeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); renderScatter(S.d);});
+  hookScatter();
+  let rt; addEventListener('resize',()=>{clearTimeout(rt); rt=setTimeout(()=>{if(!S.d)return; renderRaw(S.d); renderEpoch(S.d); renderERD(S.d); renderCSP(S.d); renderScatter(S.d); renderHist(S.d);},150);});
+  loadSubject(idx.subjects[0].subject);
+}
+init();
+</script>
+</body>
+</html>

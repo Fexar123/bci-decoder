@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Живой курсор — BCI</title>
+<style>
+:root{
+  --bg:#07090f; --panel:#0e131d; --panel2:#121a27; --line:#1f2a3b; --text:#e6edf7; --muted:#8a97ab;
+  --left:#60a5fa; --right:#f472b6; --ok:#34d399; --bad:#f87171; --accent:#a78bfa; --other:#94a3b8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,"Segoe UI",system-ui,sans-serif}
+body{background:radial-gradient(1100px 600px at 85% -10%,#1b1640 0%,transparent 60%),radial-gradient(900px 500px at -10% 0%,#0c2a3a 0%,transparent 55%),var(--bg);min-height:100vh}
+.wrap{max-width:1320px;margin:0 auto;padding:22px 20px 60px}
+header{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+h1{margin:0;font-size:28px;letter-spacing:-.02em}
+h1 span{background:linear-gradient(90deg,var(--left),var(--accent),var(--right));-webkit-background-clip:text;background-clip:text;color:transparent}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+.sub{color:var(--muted);font-size:14px}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:12px;padding:7px 11px;cursor:pointer;min-width:70px;text-align:center;font:inherit}
+.pill.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 24px -6px var(--accent)}
+.pill b{display:block;font-size:15px} .pill small{color:var(--muted);font-size:12px}
+.panel{background:linear-gradient(180deg,rgba(18,26,39,.9),rgba(14,19,29,.9));border:1px solid var(--line);border-radius:20px;padding:16px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.btn{background:#1e293b;border:1px solid #334155;color:var(--text);border-radius:12px;padding:8px 14px;font:inherit;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.big{background:linear-gradient(90deg,#4f46e5,#7c3aed);border:0;font-weight:700;min-width:120px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--muted);padding:7px 12px;cursor:pointer;font:inherit;font-size:13px}
+.seg button.on{background:#1e293b;color:var(--text)}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:13px;cursor:pointer}
+.clock{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px}
+@media (max-width:960px){.main{grid-template-columns:1fr}}
+canvas{display:block;width:100%}
+#stage{height:330px;border-radius:16px;background:radial-gradient(circle at 50% 35%,#131b2c,#07090f 80%);border:1px solid var(--line)}
+#strip{height:190px;margin-top:12px;border-radius:14px;background:#0a0f18;border:1px solid var(--line)}
+.side{display:grid;gap:12px;align-content:start}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px}
+.box .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.big-num{font-size:34px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .ok{color:var(--ok)} .bad{color:var(--bad)}
+.meter{display:grid;grid-template-columns:34px 1fr 52px;gap:8px;align-items:center;margin-top:8px;font-size:13px}
+.track{position:relative;height:14px;background:#0a0f18;border-radius:7px;overflow:hidden}
+.track .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#475569}
+.track i{position:absolute;top:0;bottom:0;border-radius:7px;transition:width .08s,left .08s}
+#timeline{height:70px;margin-top:12px;cursor:pointer}
+.explain{color:var(--muted);font-size:14px;max-width:950px;margin:14px 0 0}
+.explain b{color:var(--text)}
+.tag{display:inline-block;white-space:nowrap;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.tag.left_hand{background:rgba(96,165,250,.15);color:var(--left)}
+.tag.right_hand{background:rgba(244,114,182,.15);color:var(--right)}
+.nodata{max-width:720px;margin:60px auto;padding:24px;border:1px solid #7f1d1d;background:#1c0f14;border-radius:16px;color:#fecaca;font-size:16px;line-height:1.6}.nodata code{background:#0a0f18;padding:2px 6px;border-radius:6px;color:#e6edf7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1><span>Живой курсор</span> · мысль → движение</h1>
+      <div class="sub">Запись дня 2 играет как прямой эфир · <span id="subModel">модель выучена на дне 1</span> · <a href="index.html">← разбор модели</a></div>
+    </div>
+    <div class="pills" id="pills"></div>
+  </header>
+
+  <div class="panel">
+    <div class="controls">
+      <button class="btn big" id="play">▶ Пуск</button>
+      <button class="btn" id="next">⏭ Следующая проба</button>
+      <div class="seg" id="speed"><button data-v="1" class="on">1×</button><button data-v="2">2×</button><button data-v="4">4×</button><button data-v="8">8×</button></div>
+      <div class="seg" id="model"><button data-m="own" class="on">Своя модель · 19 мин калибровки</button><button data-m="zero">Без калибровки · чужие мозги</button><button data-m="adapt">Без калибровки + учится по ходу</button></div>
+      <label class="chk"><input type="checkbox" id="skip" checked> пропускать «ноги» и «язык»</label>
+      <span class="clock" id="clock"></span>
+    </div>
+    <div class="main">
+      <div>
+        <canvas id="stage"></canvas>
+        <canvas id="strip"></canvas>
+        <canvas id="timeline"></canvas>
+      </div>
+      <div class="side">
+        <div class="box">
+          <div class="k">Счёт попаданий</div>
+          <div class="big-num" id="score">0 / 0</div>
+          <div class="muted" id="scoreSub"></div>
+        </div>
+        <div class="box">
+          <div class="k">Сумма LDA прямо сейчас</div>
+          <div class="meter" style="grid-template-columns:1fr"><div class="track" id="gauge"><span class="mid"></span><i></i></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px"><span style="color:var(--left)">← левая</span><span id="gaugeVal" class="muted"></span><span style="color:var(--right)">правая →</span></div>
+        </div>
+        <div class="box">
+          <div class="k">Ритм 8–30 Гц, % от обычного</div>
+          <div class="meter"><b>C3</b><div class="track" id="mC3"><span class="mid"></span><i></i></div><span id="vC3"></span></div>
+          <div class="meter"><b>C4</b><div class="track" id="mC4"><span class="mid"></span><i></i></div><span id="vC4"></span></div>
+          <div class="muted" style="font-size:12.5px;margin-top:8px">Провал влево = ERD. Правая рука → проседает C3, левая → C4.</div>
+        </div>
+        <div class="box" id="now"></div>
+      </div>
+    </div>
+    <p class="explain" id="modelNote"></p>
+    <p class="explain"><b>Как это работает.</b> Каждые 0,1 с модель берёт <b>последние 2 секунды</b> сигнала (подсвечены на волнах), прогоняет через 6 смесей CSP и LDA и получает сумму: минус — левая, плюс — правая. Пока человек представляет движение (4 с после стрелки), сумма толкает шарик. Где шарик в конце — то и ответ. Фильтр <b>не заглядывает в будущее</b>, всё как в настоящем BCI. В перерывах модель всё равно что-то «говорит» (бледный шарик): класса «ничего не думаю» у неё нет.</p>
+  </div>
+</div>
+
+<script>
+const COL={left_hand:'#60a5fa',right_hand:'#f472b6',feet:'#94a3b8',tongue:'#94a3b8'};
+const RU={left_hand:'левая рука',right_hand:'правая рука',feet:'ноги',tongue:'язык'};
+const ARROW={left_hand:'←',right_hand:'→',feet:'↓',tongue:'↑'};
+const LR=c=>c==='left_hand'||c==='right_hand';
+const $=id=>document.getElementById(id);
+const P={d:null,raw:null,model:'own',T:0,playing:false,speed:1,skip:true,traj:[],flash:null};
+
+function setup(cv){const dpr=devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=w*dpr;cv.height=h*dpr;}
+  const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);return{ctx,w,h};}
+const fmt=t=>{const m=Math.floor(t/60),s=Math.floor(t%60);return `${m}:${String(s).padStart(2,'0')}`;};
+
+// индекс шага решения для момента T
+const stepAt=T=>Math.max(0,Math.min(P.d.score.length-1,Math.floor((T-P.d.t_first)/P.d.step_s+1e-9)));
+const stepTime=i=>P.d.t_first+i*P.d.step_s;
+function trialAt(T){const tr=P.d.trials;let lo=0,hi=tr.length-1,k=-1;while(lo<=hi){const m=(lo+hi)>>1;if(tr[m].t<=T){k=m;lo=m+1;}else hi=m-1;}return k;}
+
+// траектория шарика на каждую пробу — та же формула, что в stream_sim.py
+function buildTraj(){
+  const d=P.d;P.traj=d.trials.map(tr=>{
+    const xs=[];let x=0;const a=tr.t+d.cue_s,b=tr.t+d.mi_end_s;
+    let i=stepAt(a);while(i<d.score.length&&stepTime(i)<=a+1e-9)i++;
+    const t=[];for(;i<d.score.length&&stepTime(i)<=b+1e-9;i++){x=Math.max(-1,Math.min(1,x+d.gain*Math.max(-d.clip,Math.min(d.clip,d.score[i]))));xs.push(x);t.push(stepTime(i));}
+    return{t,xs};});
+}
+function ballAt(T,k){
+  const d=P.d,tr=d.trials[k];if(k<0)return{x:0,live:false};
+  const a=tr.t+d.cue_s,b=tr.t+d.mi_end_s;
+  if(T>a&&T<=b+0.0001){const tj=P.traj[k];let x=0;for(let j=0;j<tj.t.length&&tj.t[j]<=T;j++)x=tj.xs[j];return{x,live:true};}
+  const s=d.score[stepAt(T)];return{x:Math.tanh(s/2)*.6,live:false};
+}
+
+// ---------- сцена ----------
+function drawStage(){
+  const {ctx,w,h}=setup($('stage')),d=P.d,T=P.T,k=trialAt(T),tr=k>=0?d.trials[k]:null;
+  const rel=tr?T-tr.t:99, phase=!tr?'rest':rel<d.cue_s?'fix':rel<=d.mi_end_s?'mi':'rest';
+  const cy=h*.68, L=w*.1, R=w*.9, X=x=>L+(x+1)/2*(R-L);
+  // зоны целей
+  const g1=ctx.createLinearGradient(L,0,X(-0.35),0);g1.addColorStop(0,'rgba(96,165,250,.35)');g1.addColorStop(1,'rgba(96,165,250,0)');
+  ctx.fillStyle=g1;ctx.fillRect(L,cy-46,X(-.35)-L,92);
+  const g2=ctx.createLinearGradient(R,0,X(.35),0);g2.addColorStop(0,'rgba(244,114,182,.35)');g2.addColorStop(1,'rgba(244,114,182,0)');
+  ctx.fillStyle=g2;ctx.fillRect(X(.35),cy-46,R-X(.35),92);
+  ctx.strokeStyle='#1f2a3b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(L,cy);ctx.lineTo(R,cy);ctx.stroke();
+  ctx.strokeStyle='#334155';ctx.setLineDash([4,6]);ctx.beginPath();ctx.moveTo(X(0),cy-50);ctx.lineTo(X(0),cy+50);ctx.stroke();ctx.setLineDash([]);
+  ctx.font='600 14px Inter,Segoe UI,sans-serif';ctx.textAlign='left';ctx.fillStyle=COL.left_hand;ctx.fillText('ЛЕВАЯ',L+8,cy+66);
+  ctx.textAlign='right';ctx.fillStyle=COL.right_hand;ctx.fillText('ПРАВАЯ',R-8,cy+66);
+  // подсказка — что видел человек
+  ctx.textAlign='center';
+  if(phase==='fix'){ctx.fillStyle='#e6edf7';ctx.font='700 64px Inter,Segoe UI,sans-serif';ctx.fillText('+',w/2,h*.32);
+    ctx.font='14px Inter,Segoe UI,sans-serif';ctx.fillStyle='#8a97ab';ctx.fillText('крестик: приготовиться',w/2,h*.32+28);}
+  else if(phase==='mi'){ctx.fillStyle=COL[tr.y];ctx.shadowColor=COL[tr.y];ctx.shadowBlur=30;ctx.font='800 92px Inter,Segoe UI,sans-serif';ctx.fillText(ARROW[tr.y],w/2,h*.36);ctx.shadowBlur=0;
+    ctx.font='15px Inter,Segoe UI,sans-serif';ctx.fillStyle='#cbd5e1';ctx.fillText(`представляет: ${RU[tr.y]}${LR(tr.y)?'':' — модель такого класса не знает'}`,w/2,h*.36+30);
+    const p=(rel-d.cue_s)/(d.mi_end_s-d.cue_s);ctx.fillStyle='#1f2a3b';ctx.fillRect(w/2-110,h*.36+42,220,4);ctx.fillStyle=COL[tr.y];ctx.fillRect(w/2-110,h*.36+42,220*p,4);}
+  else{ctx.fillStyle='#64748b';ctx.font='600 22px Inter,Segoe UI,sans-serif';ctx.fillText('отдых',w/2,h*.3);}
+  // шарик
+  const b=ballAt(T,k), bx=X(b.x);
+  const col=b.live?(b.x<0?COL.left_hand:COL.right_hand):'#64748b';
+  ctx.globalAlpha=b.live?1:.35;
+  const rg=ctx.createRadialGradient(bx,cy,2,bx,cy,b.live?42:28);rg.addColorStop(0,col);rg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=rg;ctx.beginPath();ctx.arc(bx,cy,b.live?42:28,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(bx,cy,b.live?13:9,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+  // вспышка результата
+  if(P.flash&&T-P.flash.T<1.6&&T>=P.flash.T){const f=P.flash;ctx.globalAlpha=1-(T-f.T)/1.6;ctx.font='800 26px Inter,Segoe UI,sans-serif';
+    ctx.fillStyle=f.hit?'#34d399':'#f87171';ctx.fillText(f.hit?'✓ попал':'✗ мимо',X(f.x),cy-58);ctx.globalAlpha=1;}
+}
+
+// ---------- волны ----------
+function drawStrip(){
+  const {ctx,w,h}=setup($('strip')),d=P.d,T=P.T,span=6,fs=d.fs_disp;
+  const m={l:40,r:10,t:10,b:20},W=w-m.l-m.r,H=h-m.t-m.b,X=t=>m.l+(t-(T-span))/span*W;
+  ctx.fillStyle='rgba(167,139,250,.12)';ctx.fillRect(X(T-d.win_s),m.t,X(T)-X(T-d.win_s),H);
+  ctx.strokeStyle='rgba(167,139,250,.6)';ctx.strokeRect(X(T-d.win_s)+.5,m.t+.5,X(T)-X(T-d.win_s)-1,H-1);
+  ctx.fillStyle='#c4b5fd';ctx.font='12px Inter,Segoe UI,sans-serif';ctx.textAlign='right';ctx.fillText('окно модели: 2 с',X(T)-6,m.t+14);
+  const k=trialAt(T);if(k>=0){const tr=d.trials[k],a=tr.t+d.cue_s;if(a>T-span&&a<T){ctx.strokeStyle=COL[tr.y];ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(X(a),m.t);ctx.lineTo(X(a),m.t+H);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=COL[tr.y];ctx.textAlign='left';ctx.fillText('стрелка '+ARROW[tr.y],X(a)+4,m.t+H-4);}}
+  const rows=[['C3',m.t+H*.27],['C4',m.t+H*.73]];
+  const i0=Math.max(0,Math.floor((T-span)*fs)),i1=Math.min(d.eeg.C3.length,Math.floor(T*fs));
+  let mx=10;for(const [ch] of rows)for(let i=i0;i<i1;i+=3)mx=Math.max(mx,Math.abs(d.eeg[ch][i]));
+  ctx.save();ctx.beginPath();ctx.rect(m.l,m.t,W,H);ctx.clip();
+  for(const [ch,y0] of rows){ctx.strokeStyle=ch==='C3'?'#93c5fd':'#f9a8d4';ctx.lineWidth=1.2;ctx.beginPath();
+    for(let i=i0;i<i1;i++){const px=X(i/fs),py=y0-d.eeg[ch][i]/mx*H*.22;i===i0?ctx.moveTo(px,py):ctx.lineTo(px,py);}ctx.stroke();}
+  ctx.restore();
+  ctx.fillStyle='#e6edf7';ctx.font='700 12px Inter,Segoe UI,sans-serif';ctx.textAlign='left';
+  rows.forEach(([ch,y])=>ctx.fillText(ch,8,y+4));
+  ctx.fillStyle='#8a97ab';ctx.font='11px Inter,Segoe UI,sans-serif';ctx.textAlign='center';
+  for(let s=0;s<=span;s++)ctx.fillText(s===span?'сейчас':`−${span-s} с`,m.l+W*s/span,h-5);
+}
+
+// ---------- лента проб ----------
+let tlBoxes=[];
+function drawTimeline(){
+  const {ctx,w,h}=setup($('timeline')),d=P.d,T=P.T,tr=d.trials,n=tr.length,cols=Math.ceil(n/3),bw=w/cols,bh=(h-16)/3;
+  tlBoxes=[];const cur=trialAt(T);
+  tr.forEach((t,i)=>{const c=i%cols,r=Math.floor(i/cols),x=c*bw,y=14+r*bh;tlBoxes.push({x,y,w:bw,h:bh,i});
+    const done=T>=t.t+d.mi_end_s;ctx.globalAlpha=LR(t.y)?1:.35;
+    ctx.fillStyle=done?(LR(t.y)?(t.hit?'#34d399':'#f87171'):'#475569'):(COL[t.y]+'55');
+    ctx.fillRect(x+1,y+1,bw-2,bh-2);ctx.globalAlpha=1;
+    if(i===cur){ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,bw-2,bh-2);}});
+  ctx.fillStyle='#8a97ab';ctx.font='11px Inter,Segoe UI,sans-serif';ctx.textAlign='left';
+  ctx.fillText(`все ${n} проб дня 2 · зелёный — попал, красный — мимо, бледные — ноги/язык · клик — перейти`,0,10);
+}
+$('timeline').addEventListener('click',e=>{const r=$('timeline').getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  const b=tlBoxes.find(b=>x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h);if(b){P.T=P.d.trials[b.i].t-.3;P.flash=null;render();}});
+
+// ---------- боковые счётчики ----------
+function drawSide(){
+  const d=P.d,T=P.T;let hit=0,cnt=0;
+  d.trials.forEach(t=>{if(LR(t.y)&&T>=t.t+d.mi_end_s){cnt++;hit+=t.hit?1:0;}});
+  $('score').innerHTML=`<span class="ok">${hit}</span> / ${cnt}`;
+  let upd='';if(P.model==='adapt'&&P.raw.adapt){const u=P.raw.adapt.updates.filter(u=>u.t<=T).pop();upd=`<br>модель дообучена на <b>${u?u.n:0}</b> пробах на руку · доверие к ним <b>${u?Math.round(u.share*100):0}%</b>`;}
+  $('scoreSub').innerHTML=`${cnt?Math.round(hit/cnt*100)+'% пока · ':''}за весь день: ${d.hits} из ${d.counted} = ${Math.round(d.hits/d.counted*1000)/10}%`+upd;
+  const i=stepAt(T),s=d.score[i],gp=Math.max(-1,Math.min(1,s/3));
+  const g=$('gauge').querySelector('i');g.style.left=(gp<0?50+gp*50:50)+'%';g.style.width=Math.abs(gp)*50+'%';g.style.background=gp<0?'var(--left)':'var(--right)';
+  $('gaugeVal').textContent=(s>0?'+':'')+s.toFixed(2);
+  for(const ch of ['C3','C4']){const v=d.pw[ch][i],p=Math.max(-1,Math.min(1,v/80));
+    const el=$('m'+ch).querySelector('i');el.style.left=(p<0?50+p*50:50)+'%';el.style.width=Math.abs(p)*50+'%';el.style.background=v<-20?'#a78bfa':'#475569';
+    $('v'+ch).textContent=(v>0?'+':'')+v+'%';}
+  const k=trialAt(T);
+  if(k>=0){const t=d.trials[k];$('now').innerHTML=`<div class="k">Проба ${k+1} из ${d.trials.length}</div><div style="margin-top:6px">просили: <span class="tag ${t.y}" style="${LR(t.y)?'':'color:#94a3b8;background:#1e293b'}">${RU[t.y]}</span></div>`+
+    (T>=t.t+d.mi_end_s?`<div style="margin-top:4px">модель: <span class="tag ${t.said}">${RU[t.said]}</span> ${LR(t.y)?(t.hit?'<span class="ok">✓</span>':'<span class="bad">✗</span>'):'<span class="muted">(не считается)</span>'}</div>`:'<div class="muted" style="margin-top:4px">модель решает…</div>');}
+  $('clock').textContent=`${fmt(T)} / ${fmt(d.duration)} записи`;
+}
+
+function noData(){document.querySelector('.wrap').innerHTML=`<div class="nodata"><b>Данные не загрузились.</b><br>Страницу открыли как файл — так браузер не даёт ей читать данные.<br><br>Запусти <code>projects/bci/app/run.cmd</code> двойным кликом — откроется сам.<br>Или вручную из папки <code>projects/bci</code>: <code>python -m http.server 8765 --bind 127.0.0.1 --directory app</code> и открой <code>http://localhost:8765</code>.</div>`;}
+function render(){if(!P.d)return;drawStage();drawStrip();drawTimeline();drawSide();}
+
+// ---------- проигрывание ----------
+let last=null;
+function tick(now){
+  if(P.playing&&P.d){const dt=last==null?0:Math.min(.1,(now-last)/1000);const prev=P.T;P.T+=dt*P.speed;
+    const d=P.d,k=trialAt(P.T);
+    // вспышка, когда кончилось воображение
+    const kp=trialAt(prev);if(kp>=0){const t=d.trials[kp],e=t.t+d.mi_end_s;if(prev<e&&P.T>=e&&LR(t.y))P.flash={T:e,x:t.end_x,hit:t.hit};}
+    if(P.skip&&k>=0&&!LR(d.trials[k].y)){const nx=d.trials.findIndex((t,j)=>j>k&&LR(t.y));if(nx>=0)P.T=d.trials[nx].t-.3;}
+    if(P.T>=d.duration-.2){P.T=d.duration-.2;setPlay(false);}
+    render();}
+  last=now;requestAnimationFrame(tick);
+}
+function setPlay(v){P.playing=v;$('play').textContent=v?'⏸ Пауза':'▶ Пуск';last=null;}
+$('play').onclick=()=>{if(P.d)setPlay(!P.playing);};
+$('next').onclick=()=>{if(!P.d)return;const d=P.d,k=trialAt(P.T);const nx=d.trials.findIndex((t,j)=>j>k&&(!P.skip||LR(t.y)));if(nx>=0){P.T=d.trials[nx].t-.3;P.flash=null;render();}};
+$('speed').querySelectorAll('button').forEach(b=>b.onclick=()=>{P.speed=+b.dataset.v;$('speed').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));});
+$('skip').onchange=e=>P.skip=e.target.checked;
+addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();setPlay(!P.playing);}if(e.code==='ArrowRight')$('next').click();});
+addEventListener('resize',render);
+
+async function load(s){
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',+p.dataset.s===s));
+  setPlay(false);
+  P.raw=await (await fetch(`data/stream_s${String(s).padStart(2,'0')}.json`)).json();
+  applyModel();
+  const first=P.d.trials.findIndex(t=>LR(t.y));P.T=P.d.trials[first].t-.3;render();
+}
+// своя модель (учёба на его дне 1) или без калибровки (8 чужих + выравнивание на ходу)
+function applyModel(){
+  const r=P.raw; if(!r)return;
+  const alt = P.model==='own' ? null : r[P.model];
+  P.d = alt ? {...r,score:alt.score,trials:alt.trials,hits:alt.hits,counted:alt.counted} : r;
+  buildTraj();P.flash=null;
+  $('subModel').textContent = {own:'модель выучена на дне 1',zero:'модель этого человека не видела',adapt:'старт вслепую, дальше учится на каждой пробе'}[P.model];
+  $('modelNote').innerHTML = P.model==='adapt'
+    ? '<b>Учится по ходу:</b> старт как «без калибровки». После каждой пробы её ответ известен (какую руку просили), и модель дообучается. Доверие к своим пробам растёт: N/(N+10).'
+    : P.model==='zero'
+    ? '<b>Без калибровки:</b> модель ни разу не видела этого человека. Учена на 8 других, а «форма» его сигнала уточняется на ходу по прошлым секундам, без ответов.'
+    : '<b>Своя модель:</b> учена на 144 пробах этого же человека (день 1, ~19 минут калибровки).';
+}
+$('model').querySelectorAll('button').forEach(b=>b.onclick=()=>{P.model=b.dataset.m;$('model').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));applyModel();render();});
+(async()=>{
+  let idx;try{if(location.protocol==='file:')throw 0;idx=await (await fetch('data/stream_index.json')).json();}catch(e){noData();return;}
+  $('pills').innerHTML=idx.map(e=>`<button class="pill" data-s="${e.subject}" title="своя модель · без калибровки · учится по ходу"><b>S${e.subject}</b><small>${Math.round(e.hits/e.counted*100)}%${e.zero!=null?' · '+Math.round(e.zero*100)+'%':''}${e.adapt!=null?' · '+Math.round(e.adapt*100)+'%':''}</small></button>`).join('');
+  document.querySelectorAll('.pill').forEach(p=>p.onclick=()=>load(+p.dataset.s));
+  const q=+new URLSearchParams(location.search).get('s')||8;
+  await load(q);requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

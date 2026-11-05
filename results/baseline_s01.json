@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-30",
+  "dataset": "BNCI2014_001 (BCI IV 2a)",
+  "subject": 1,
+  "band_hz": [
+    8.0,
+    30.0
+  ],
+  "pipeline": "CSP+LDA",
+  "lr": {
+    "n_classes": 2,
+    "classes": [
+      "left_hand",
+      "right_hand"
+    ],
+    "n_trials": 288,
+    "chance": 0.5,
+    "cv5_mean": 0.854,
+    "cv5_std": 0.059,
+    "train_to_eval": 0.826,
+    "epoch_s": [
+      2.0,
+      6.0
+    ],
+    "sfreq": 250.0,
+    "n_channels": 22
+  },
+  "4class": {
+    "n_classes": 4,
+    "classes": [
+      "feet",
+      "left_hand",
+      "right_hand",
+      "tongue"
+    ],
+    "n_trials": 576,
+    "chance": 0.25,
+    "cv5_mean": 0.76,
+    "cv5_std": 0.046,
+    "train_to_eval": 0.736,
+    "epoch_s": [
+      2.0,
+      6.0
+    ],
+    "sfreq": 250.0,
+    "n_channels": 22
+  }
+}

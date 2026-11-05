@@ -1,0 +1,33 @@
+# окружение и локальный Python
+.venv/
+.python/
+.cache/
+
+# данные (датасеты, MNE_DATA) — большие, качаются заново
+data/
+
+# кэши Python / Jupyter / MNE
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+*.egg-info/
+
+# большие бинарники и модели
+*.fif
+*.edf
+*.gdf
+*.mat
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.pkl
+*.joblib
+*.pt
+*.zip
+
+# система
+.DS_Store
+Thumbs.db
+desktop.ini
