@@ -1,7 +1,7 @@
 # Черновик комментария в pyRiemann #490
 
 Куда: https://github.com/pyRiemann/pyRiemann/issues/490 — от аккаунта Fexar123.
-Статус: **черновик, НЕ опубликован.** Публикуется только после «да» Севы.
+Статус: **опубликован 09.11.2026** от Fexar123 — https://github.com/pyRiemann/pyRiemann/issues/490#issuecomment-6750783190 (без пометки про ИИ — решение Севы).
 Код: `projects/bci/tlcenter_imbalance.py`; повтор без скачиваний: `scout/repro_490_weights.py`.
 Сырые цифры: `results/tlcenter_imbalance.json` (BCI IV 2a), `results/tlcenter_imbalance_dreyer.json` (Dreyer2023), `results/tlcenter_imbalance_synthetic.json`.
 
