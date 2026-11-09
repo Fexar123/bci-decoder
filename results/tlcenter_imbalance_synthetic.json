@@ -1,6 +1,16 @@
 {
  "buffer": 60,
  "reps": 20,
+ "methods": [
+  "none",
+  "plain",
+  "oracle",
+  "pseudo_post",
+  "pseudo_pre",
+  "pseudo_soft",
+  "pseudo_gate",
+  "pseudo_dist"
+ ],
  "results": {
   "0.5": {
    "0.5": {
@@ -9,7 +19,9 @@
     "oracle": 0.8595,
     "pseudo_post": 0.86075,
     "pseudo_pre": 0.8474999999999998,
-    "pseudo_iter": 0.8542500000000002
+    "pseudo_soft": 0.85175,
+    "pseudo_gate": 0.8474999999999998,
+    "pseudo_dist": 0.8474999999999998
    },
    "0.7": {
     "none": 0.8299999999999998,
@@ -17,7 +29,9 @@
     "oracle": 0.859625,
     "pseudo_post": 0.8424999999999999,
     "pseudo_pre": 0.8421249999999999,
-    "pseudo_iter": 0.844125
+    "pseudo_soft": 0.8532500000000001,
+    "pseudo_gate": 0.8421249999999999,
+    "pseudo_dist": 0.8421249999999999
    },
    "0.8": {
     "none": 0.8299999999999998,
@@ -25,7 +39,9 @@
     "oracle": 0.8539999999999999,
     "pseudo_post": 0.8313749999999999,
     "pseudo_pre": 0.846125,
-    "pseudo_iter": 0.8377500000000001
+    "pseudo_soft": 0.8465,
+    "pseudo_gate": 0.846125,
+    "pseudo_dist": 0.846125
    },
    "0.9": {
     "none": 0.8299999999999998,
@@ -33,7 +49,9 @@
     "oracle": 0.8528749999999998,
     "pseudo_post": 0.792375,
     "pseudo_pre": 0.83775,
-    "pseudo_iter": 0.819875
+    "pseudo_soft": 0.8254999999999999,
+    "pseudo_gate": 0.83775,
+    "pseudo_dist": 0.83775
    },
    "1.0": {
     "none": 0.8299999999999998,
@@ -41,7 +59,13 @@
     "oracle": 0.748375,
     "pseudo_post": 0.751,
     "pseudo_pre": 0.8466250000000001,
-    "pseudo_iter": 0.8057500000000001
+    "pseudo_soft": 0.8244999999999999,
+    "pseudo_gate": 0.8466250000000001,
+    "pseudo_dist": 0.8466250000000001
+   },
+   "_diag": {
+    "conf": 0.8677540204501856,
+    "shift_ratio": 0.571810318565971
    }
   },
   "1.0": {
@@ -51,7 +75,9 @@
     "oracle": 0.8622499999999998,
     "pseudo_post": 0.8598750000000001,
     "pseudo_pre": 0.82025,
-    "pseudo_iter": 0.84475
+    "pseudo_soft": 0.8258750000000001,
+    "pseudo_gate": 0.82025,
+    "pseudo_dist": 0.82025
    },
    "0.7": {
     "none": 0.7899999999999998,
@@ -59,7 +85,9 @@
     "oracle": 0.8602500000000001,
     "pseudo_post": 0.8386249999999998,
     "pseudo_pre": 0.8202499999999999,
-    "pseudo_iter": 0.8411250000000001
+    "pseudo_soft": 0.8322499999999999,
+    "pseudo_gate": 0.8202499999999999,
+    "pseudo_dist": 0.8202499999999999
    },
    "0.8": {
     "none": 0.7899999999999998,
@@ -67,7 +95,9 @@
     "oracle": 0.858625,
     "pseudo_post": 0.8316250000000001,
     "pseudo_pre": 0.8252499999999999,
-    "pseudo_iter": 0.838875
+    "pseudo_soft": 0.8390000000000001,
+    "pseudo_gate": 0.8252499999999999,
+    "pseudo_dist": 0.8244999999999999
    },
    "0.9": {
     "none": 0.7899999999999998,
@@ -75,7 +105,9 @@
     "oracle": 0.854875,
     "pseudo_post": 0.798,
     "pseudo_pre": 0.820875,
-    "pseudo_iter": 0.829
+    "pseudo_soft": 0.8295,
+    "pseudo_gate": 0.820875,
+    "pseudo_dist": 0.8115
    },
    "1.0": {
     "none": 0.7899999999999998,
@@ -83,7 +115,13 @@
     "oracle": 0.74125,
     "pseudo_post": 0.7438750000000001,
     "pseudo_pre": 0.8026249999999999,
-    "pseudo_iter": 0.77775
+    "pseudo_soft": 0.79625,
+    "pseudo_gate": 0.8007499999999999,
+    "pseudo_dist": 0.7791250000000001
+   },
+   "_diag": {
+    "conf": 0.861339891452097,
+    "shift_ratio": 0.8723574012297132
    }
   },
   "1.5": {
@@ -93,7 +131,9 @@
     "oracle": 0.8593750000000002,
     "pseudo_post": 0.8554999999999999,
     "pseudo_pre": 0.7885,
-    "pseudo_iter": 0.833375
+    "pseudo_soft": 0.8045,
+    "pseudo_gate": 0.7885,
+    "pseudo_dist": 0.8551250000000001
    },
    "0.7": {
     "none": 0.705,
@@ -101,7 +141,9 @@
     "oracle": 0.8575000000000002,
     "pseudo_post": 0.838875,
     "pseudo_pre": 0.78,
-    "pseudo_iter": 0.8293750000000001
+    "pseudo_soft": 0.80375,
+    "pseudo_gate": 0.78,
+    "pseudo_dist": 0.82925
    },
    "0.8": {
     "none": 0.705,
@@ -109,7 +151,9 @@
     "oracle": 0.85725,
     "pseudo_post": 0.8215,
     "pseudo_pre": 0.7841250000000001,
-    "pseudo_iter": 0.818375
+    "pseudo_soft": 0.8076250000000001,
+    "pseudo_gate": 0.7841250000000001,
+    "pseudo_dist": 0.8131250000000001
    },
    "0.9": {
     "none": 0.705,
@@ -117,7 +161,9 @@
     "oracle": 0.84925,
     "pseudo_post": 0.7907499999999998,
     "pseudo_pre": 0.77725,
-    "pseudo_iter": 0.7995
+    "pseudo_soft": 0.8067500000000001,
+    "pseudo_gate": 0.77725,
+    "pseudo_dist": 0.776875
    },
    "1.0": {
     "none": 0.705,
@@ -125,7 +171,13 @@
     "oracle": 0.739125,
     "pseudo_post": 0.7438750000000001,
     "pseudo_pre": 0.788625,
-    "pseudo_iter": 0.7766250000000001
+    "pseudo_soft": 0.794875,
+    "pseudo_gate": 0.788625,
+    "pseudo_dist": 0.739125
+   },
+   "_diag": {
+    "conf": 0.8693179287248455,
+    "shift_ratio": 1.1881752023429777
    }
   },
   "2.0": {
@@ -135,7 +187,9 @@
     "oracle": 0.8623749999999999,
     "pseudo_post": 0.8568749999999999,
     "pseudo_pre": 0.70775,
-    "pseudo_iter": 0.8237500000000001
+    "pseudo_soft": 0.773375,
+    "pseudo_gate": 0.70775,
+    "pseudo_dist": 0.8623749999999999
    },
    "0.7": {
     "none": 0.6075,
@@ -143,7 +197,9 @@
     "oracle": 0.8618750000000001,
     "pseudo_post": 0.835,
     "pseudo_pre": 0.71175,
-    "pseudo_iter": 0.8186249999999999
+    "pseudo_soft": 0.7692500000000001,
+    "pseudo_gate": 0.71175,
+    "pseudo_dist": 0.828125
    },
    "0.8": {
     "none": 0.6075,
@@ -151,7 +207,9 @@
     "oracle": 0.8550000000000001,
     "pseudo_post": 0.82225,
     "pseudo_pre": 0.7180000000000001,
-    "pseudo_iter": 0.7938750000000001
+    "pseudo_soft": 0.7857499999999998,
+    "pseudo_gate": 0.7180000000000001,
+    "pseudo_dist": 0.81525
    },
    "0.9": {
     "none": 0.6075,
@@ -159,7 +217,9 @@
     "oracle": 0.8557500000000001,
     "pseudo_post": 0.8091250000000001,
     "pseudo_pre": 0.752,
-    "pseudo_iter": 0.81325
+    "pseudo_soft": 0.819875,
+    "pseudo_gate": 0.752,
+    "pseudo_dist": 0.79125
    },
    "1.0": {
     "none": 0.6075,
@@ -167,7 +227,13 @@
     "oracle": 0.7406249999999999,
     "pseudo_post": 0.739125,
     "pseudo_pre": 0.721875,
-    "pseudo_iter": 0.749125
+    "pseudo_soft": 0.7819999999999999,
+    "pseudo_gate": 0.721875,
+    "pseudo_dist": 0.7406249999999999
+   },
+   "_diag": {
+    "conf": 0.8936803168488943,
+    "shift_ratio": 1.528083765455969
    }
   },
   "3.0": {
@@ -177,7 +243,9 @@
     "oracle": 0.8612500000000001,
     "pseudo_post": 0.85075,
     "pseudo_pre": 0.6481250000000001,
-    "pseudo_iter": 0.793125
+    "pseudo_soft": 0.7009999999999998,
+    "pseudo_gate": 0.6481250000000001,
+    "pseudo_dist": 0.8612500000000001
    },
    "0.7": {
     "none": 0.51,
@@ -185,7 +253,9 @@
     "oracle": 0.8553749999999999,
     "pseudo_post": 0.828125,
     "pseudo_pre": 0.6509999999999999,
-    "pseudo_iter": 0.759375
+    "pseudo_soft": 0.7100000000000001,
+    "pseudo_gate": 0.6509999999999999,
+    "pseudo_dist": 0.825375
    },
    "0.8": {
     "none": 0.51,
@@ -193,7 +263,9 @@
     "oracle": 0.860125,
     "pseudo_post": 0.793625,
     "pseudo_pre": 0.6511250000000001,
-    "pseudo_iter": 0.753625
+    "pseudo_soft": 0.699875,
+    "pseudo_gate": 0.6511250000000001,
+    "pseudo_dist": 0.79075
    },
    "0.9": {
     "none": 0.51,
@@ -201,7 +273,9 @@
     "oracle": 0.8543750000000001,
     "pseudo_post": 0.798875,
     "pseudo_pre": 0.7141249999999999,
-    "pseudo_iter": 0.7955
+    "pseudo_soft": 0.770625,
+    "pseudo_gate": 0.7141249999999999,
+    "pseudo_dist": 0.780125
    },
    "1.0": {
     "none": 0.51,
@@ -209,7 +283,13 @@
     "oracle": 0.7273750000000001,
     "pseudo_post": 0.728875,
     "pseudo_pre": 0.6726250000000001,
-    "pseudo_iter": 0.7165
+    "pseudo_soft": 0.752125,
+    "pseudo_gate": 0.6726250000000001,
+    "pseudo_dist": 0.7273750000000001
+   },
+   "_diag": {
+    "conf": 0.9499442052950936,
+    "shift_ratio": 2.2622528919608
    }
   }
  }
