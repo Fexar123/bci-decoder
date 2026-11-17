@@ -25,3 +25,4 @@ os.environ.setdefault("MNE_DATA", str(DATA))
 os.environ.setdefault("MNE_DATASETS_BNCI_PATH", str(DATA))         # BCI IV 2a
 os.environ.setdefault("MOABB_RESULTS", str(DATA / "moabb_results"))
 os.environ.setdefault("MPLCONFIGDIR", str(_CACHE / "mpl"))
+os.environ.setdefault("LSLAPICFG", str(ROOT / "lsl_api.cfg"))  # LSL: только ошибки, без INFO-болтовни

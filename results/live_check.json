@@ -1,0 +1,24 @@
+[
+ {
+  "subject": 1,
+  "config": "ganglion",
+  "approach": "rest3",
+  "decisions_stream": 23197,
+  "decisions_batch": 23197,
+  "match_pct": 100.0,
+  "max_prob_diff": 5.000881461303397e-05,
+  "ms_per_decision": 1.0212031512700437,
+  "minutes": 38.693999999999996
+ },
+ {
+  "subject": 3,
+  "config": "ganglion",
+  "approach": "rest3",
+  "decisions_stream": 23197,
+  "decisions_batch": 23197,
+  "match_pct": 100.0,
+  "max_prob_diff": 5.0016263331453814e-05,
+  "ms_per_decision": 1.1122620381946122,
+  "minutes": 38.693999999999996
+ }
+]

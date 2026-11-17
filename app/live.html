@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Живой поток — BCI</title>
+<style>
+:root{
+  --bg:#07090f; --panel:#0e131d; --line:#1f2a3b; --text:#e6edf7; --muted:#8a97ab;
+  --left:#60a5fa; --right:#f472b6; --rest:#94a3b8; --ok:#34d399; --accent:#a78bfa;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,"Segoe UI",system-ui,sans-serif}
+body{background:radial-gradient(1100px 600px at 85% -10%,#1b1640 0%,transparent 60%),radial-gradient(900px 500px at -10% 0%,#0c2a3a 0%,transparent 55%),var(--bg);min-height:100vh}
+.wrap{max-width:1100px;margin:0 auto;padding:22px 16px 40px}
+h1{margin:0 0 4px;font-size:26px;letter-spacing:-.02em}
+h1 span{background:linear-gradient(90deg,var(--left),var(--accent),var(--right));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);font-size:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:14px}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.panel{background:linear-gradient(180deg,rgba(18,26,39,.9),rgba(14,19,29,.9));border:1px solid var(--line);border-radius:18px;padding:14px}
+#stage{display:block;width:100%;height:300px;border-radius:14px;background:radial-gradient(circle at 50% 40%,#131b2c,#07090f 80%);border:1px solid var(--line)}
+#hist{display:block;width:100%;height:120px;margin-top:10px;border-radius:12px;background:#0a0f18;border:1px solid var(--line)}
+.state{font-size:30px;font-weight:800;letter-spacing:.02em;text-align:center;padding:10px 0 4px}
+.bar{display:grid;grid-template-columns:70px 1fr 46px;gap:8px;align-items:center;margin:8px 0;font-size:14px}
+.track{height:12px;border-radius:8px;background:#1e293b;overflow:hidden;position:relative}
+.fill{height:100%;width:0;border-radius:8px;transition:width .08s linear}
+.thr{position:absolute;top:-3px;bottom:-3px;width:2px;background:#fde68a}
+.kv{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin:4px 0}
+.kv b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.note{color:var(--muted);font-size:13px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span>Живой поток</span> — кубик от ЭЭГ</h1>
+  <div class="sub" id="sub">жду декодер… запусти <code>live_decoder.py</code> и <code>lsl_source.py</code></div>
+  <div class="grid">
+    <div class="panel">
+      <canvas id="stage"></canvas>
+      <canvas id="hist"></canvas>
+    </div>
+    <div class="panel">
+      <div class="state" id="state">—</div>
+      <div class="bar"><span style="color:var(--left)">влево</span><div class="track"><div class="fill" id="fl" style="background:var(--left)"></div><div class="thr" id="tl"></div></div><b id="vl">0</b></div>
+      <div class="bar"><span style="color:var(--right)">вправо</span><div class="track"><div class="fill" id="fr" style="background:var(--right)"></div><div class="thr" id="tr"></div></div><b id="vr">0</b></div>
+      <div class="bar"><span style="color:var(--rest)">покой</span><div class="track"><div class="fill" id="fp" style="background:var(--rest)"></div></div><b id="vp">0</b></div>
+      <div class="kv"><span>время записи</span><b id="t">—</b></div>
+      <div class="kv"><span>подход / порог</span><b id="ap">—</b></div>
+      <div class="kv"><span>на одно решение</span><b id="ms">—</b></div>
+      <div class="kv"><span>подсказка</span><b id="cue">—</b></div>
+      <div class="note">Жёлтая черта — порог: ниже него кубик стоит. Стрелка сверху — что человеку показали на экране
+        во время записи (2–6 с пробы); между пробами он отдыхал, и кубик должен стоять.</div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const stage = $("stage"), hist = $("hist");
+let S = null, trail = [];
+function fit(c){ const r = c.getBoundingClientRect(), d = devicePixelRatio || 1;
+  c.width = r.width * d; c.height = r.height * d; const g = c.getContext("2d"); g.setTransform(d,0,0,d,0,0); return [g, r.width, r.height]; }
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+function draw(){
+  const [g, w, h] = fit(stage);
+  g.clearRect(0,0,w,h);
+  const cx = w/2, y = h*0.62, span = w*0.42;
+  g.strokeStyle = "#1f2a3b"; g.lineWidth = 2; g.beginPath(); g.moveTo(cx-span, y); g.lineTo(cx+span, y); g.stroke();
+  for (const [x, c] of [[-1, css("--left")], [1, css("--right")]]) { g.fillStyle = c; g.globalAlpha = .25;
+    g.fillRect(cx + x*span - (x<0?0:28), y-40, 28, 80); g.globalAlpha = 1; }
+  g.fillStyle = "#334155"; g.fillRect(cx-1, y-14, 2, 28);
+  if (S && S.cue) {
+    const c = S.cue === -1 ? css("--left") : S.cue === 1 ? css("--right") : css("--rest");
+    g.fillStyle = c; g.font = "700 46px system-ui"; g.textAlign = "center";
+    g.fillText(S.cue === -1 ? "←" : S.cue === 1 ? "→" : "↓", cx, h*0.25);
+  }
+  const x = S ? S.x : 0, px = cx + x*span;
+  const col = !S || !S.cmd ? css("--rest") : S.cmd < 0 ? css("--left") : css("--right");
+  g.shadowColor = col; g.shadowBlur = S && S.cmd ? 26 : 6;
+  g.fillStyle = col; g.fillRect(px-22, y-22, 44, 44); g.shadowBlur = 0;
+
+  const [k, W, H] = fit(hist);
+  k.clearRect(0,0,W,H);
+  const n = 300;
+  const pts = trail.slice(-n);
+  for (const [i, color] of [[0, css("--left")], [1, css("--right")], [2, css("--rest")]]) {
+    k.strokeStyle = color; k.lineWidth = 1.6; k.beginPath();
+    pts.forEach((p, j) => { const X = W - (pts.length-1-j) * W/n, Y = H - 6 - p.p[i]*(H-12); j ? k.lineTo(X,Y) : k.moveTo(X,Y); });
+    k.stroke();
+  }
+  pts.forEach((p, j) => { if (p.cmd) { k.fillStyle = p.cmd < 0 ? css("--left") : css("--right");
+    k.fillRect(W - (pts.length-1-j) * W/n, H-4, W/n+0.5, 4); } });
+  requestAnimationFrame(draw);
+}
+
+const es = new EventSource("/events");
+es.onmessage = ev => {
+  const d = JSON.parse(ev.data);
+  if (d.status !== "поток") { $("sub").textContent = d.status; return; }
+  S = d; trail.push(d); if (trail.length > 2000) trail = trail.slice(-1000);
+  $("sub").textContent = `человек S${d.subject} из BCI IV 2a, день 2 (модель его не видела) · каналы: ${d.config === "ganglion" ? "C3 Cz C4 CPz, 200 Гц — как OpenBCI Ganglion" : "все 22, 250 Гц"}`;
+  $("state").textContent = d.cmd < 0 ? "← ВЛЕВО" : d.cmd > 0 ? "ВПРАВО →" : "ПОКОЙ";
+  $("state").style.color = d.cmd < 0 ? css("--left") : d.cmd > 0 ? css("--right") : css("--rest");
+  for (const [b, v, i] of [["fl","vl",0],["fr","vr",1],["fp","vp",2]]) { $(b).style.width = (d.p[i]*100).toFixed(0)+"%"; $(v).textContent = d.p[i].toFixed(2); }
+  for (const id of ["tl","tr"]) $(id).style.left = (d.thr*100) + "%";
+  $("t").textContent = `${Math.floor(d.t/60)}:${String(Math.floor(d.t%60)).padStart(2,"0")}`;
+  $("ap").textContent = `${d.approach} / ${d.thr.toFixed(2)}`;
+  $("ms").textContent = `${d.ms_per_decision} мс`;
+  $("cue").textContent = d.cue === -1 ? "левая рука" : d.cue === 1 ? "правая рука" : d.cue === 2 ? "ноги / язык" : "отдых";
+};
+es.onerror = () => { $("sub").textContent = "нет связи с декодером (live_decoder.py)"; };
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
